@@ -1,0 +1,3 @@
+*.db
+!Demo.db
+__pycache__
