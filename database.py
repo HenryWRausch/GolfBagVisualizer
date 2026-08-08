@@ -42,7 +42,7 @@ class BagDatabase:
             distance INTEGER NOT NULL,     
             course_id INTEGER,
             FOREIGN KEY (course_id) REFERENCES courses(id)
-            FOREIGN KEY (club_name) REFERENCES bag(name)
+            FOREIGN KEY (club_name) REFERENCES bag(id)
             );""",
         )
 
@@ -50,6 +50,24 @@ class BagDatabase:
             self.conn.execute(table)
 
         self.conn.commit()
+
+    def get_bag(self):
+        # return a list of dictionaries containing all clubs in the player's bag
+        # for now returns in id order
+        # TODO - eventually needs to return in order of distance
+
+        q = """
+            SELECT abbreviation, 
+                name,
+                loft,
+                brand
+            FROM bag 
+            ORDER BY id
+            """
+
+        cursor = self.conn.execute(q)
+
+        return [dict(row) for row in cursor]
 
 
 if __name__ == "__main__":

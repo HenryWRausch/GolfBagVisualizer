@@ -10,3 +10,4 @@ class BagGrapher:
         # create our basics
         self.db = BagDatabase(name)
         self.name = name
+        self.bag = self.db.get_bag()
