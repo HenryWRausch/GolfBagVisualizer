@@ -67,7 +67,8 @@ class BagDatabase:
         # TODO - eventually needs to return in order of distance
 
         q = """
-            SELECT abbreviation, 
+            SELECT id,
+                abbreviation, 
                 name,
                 loft,
                 brand
