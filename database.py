@@ -48,7 +48,7 @@ class BagDatabase:
             """CREATE TABLE IF NOT EXISTS shots (
             id INTEGER PRIMARY KEY,
             date TEXT NOT NULL,
-            club_id TEXT NOT NULL,
+            club_id INTEGER NOT NULL,
             distance INTEGER NOT NULL,     
             course_id INTEGER,
             FOREIGN KEY (course_id) REFERENCES courses(id)
@@ -115,12 +115,26 @@ class BagDatabase:
 
         return [dict(i) for i in cursor.fetchall()]
 
+    def get_club_by_id(self, club_id: int):
+        q = """
+            SELECT id,
+                abbreviation, 
+                name,
+                loft,
+                brand
+            FROM bag 
+            WHERE id = ?
+            """
+
+        c = self.conn.execute(q, (club_id,))
+
+        return dict(c.fetchone())
+
 
 if __name__ == "__main__":
     load_dotenv()
 
     db = BagDatabase()
-    sample_filter = Filter()
 
     db.get_shots(
         {
