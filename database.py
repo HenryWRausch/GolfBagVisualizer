@@ -1,7 +1,17 @@
 import sqlite3
+from datetime import date
 from pathlib import Path
+from typing import TypedDict
 
 from dotenv import load_dotenv
+
+
+class Filter(TypedDict, total=False):
+    # holds the details that we want to include in a given plot
+    # TODO - figure out whether we want to allow specific dates
+    course_ids: list[int]
+    date_range: tuple[date, date]  # start, end
+    clubs: list[int]
 
 
 class BagDatabase:
@@ -38,11 +48,11 @@ class BagDatabase:
             """CREATE TABLE IF NOT EXISTS shots (
             id INTEGER PRIMARY KEY,
             date TEXT NOT NULL,
-            club_name TEXT NOT NULL,
+            club_id TEXT NOT NULL,
             distance INTEGER NOT NULL,     
             course_id INTEGER,
             FOREIGN KEY (course_id) REFERENCES courses(id)
-            FOREIGN KEY (club_name) REFERENCES bag(id)
+            FOREIGN KEY (club_id) REFERENCES bag(id)
             );""",
         )
 
@@ -69,8 +79,52 @@ class BagDatabase:
 
         return [dict(row) for row in cursor]
 
+    def get_shots(self, filter_: Filter | None = None):
+        # this does not handle order, we'll address that when organizing for graphing
+        q = """
+            SELECT date,
+                club_id, 
+                course_id,
+                distance
+            FROM shots
+            WHERE 1 = 1
+            """
+        if filter_ is None:
+            filter_ = Filter()
+
+        params: list[date | int] = []
+
+        if "course_ids" in filter_:
+            courses = filter_["course_ids"]
+            if len(courses) > 0:
+                q += " AND course_id in (" + ",".join(["?"] * len(courses)) + ")"
+                params.extend(courses)
+
+        if "date_range" in filter_:
+            q += " AND date BETWEEN ? AND ?"
+            params.extend(filter_["date_range"])
+
+        if "clubs" in filter_:
+            clubs = filter_["clubs"]
+            if len(clubs) > 0:
+                q += " AND club_id in (" + ",".join(["?"] * len(clubs)) + ")"
+                params.extend(clubs)
+
+        cursor = self.conn.execute(q, tuple(params))
+
+        return [dict(i) for i in cursor.fetchall()]
+
 
 if __name__ == "__main__":
     load_dotenv()
 
     db = BagDatabase()
+    sample_filter = Filter()
+
+    db.get_shots(
+        {
+            "clubs": [1, 2, 3],
+            "course_ids": [1, 2],
+            "date_range": (date(2026, 1, 11), date(2026, 3, 14)),
+        }
+    )
