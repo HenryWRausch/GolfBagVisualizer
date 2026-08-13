@@ -1,3 +1,5 @@
+from collections import Counter
+
 import matplotlib.pyplot as plt
 
 from database import BagDatabase, Filter
@@ -17,6 +19,25 @@ class BagGrapher:
         self.db = BagDatabase(name)
         self.name = name
         self.bag = self.db.get_bag()
+
+        # TODO - put some thought into the order here (reverse)
+        self.colors = [
+            "tab:blue",
+            "tab:orange",
+            "tab:green",
+            "tab:red",
+            "tab:purple",
+            "tab:brown",
+            "tab:pink",
+            "tab:gray",
+            "tab:olive",
+            "tab:cyan",
+            "steelblue",
+            "darkorange",
+            "forestgreen",
+            "firebrick",
+            "slategray",
+        ]
 
     def plot_all_points(self, filter_: Filter | None = None):
         # makes a figure that contains all filtered points as colored dots on line
@@ -45,23 +66,7 @@ class BagGrapher:
         ax = fig.add_subplot(111)
 
         # TODO - put some thought into the order here (reverse)
-        colors = [
-            "tab:blue",
-            "tab:orange",
-            "tab:green",
-            "tab:red",
-            "tab:purple",
-            "tab:brown",
-            "tab:pink",
-            "tab:gray",
-            "tab:olive",
-            "tab:cyan",
-            "steelblue",
-            "darkorange",
-            "forestgreen",
-            "firebrick",
-            "slategray",
-        ]
+        colors = [color for color in self.colors]
 
         for club in data:
             assert colors, "Graphing currently only supports 15 clubs"
@@ -77,7 +82,88 @@ class BagGrapher:
 
         fig.tight_layout()
 
+    def plot_clubs_discrete(self, filter_: Filter | None = None):
+
+        if filter_ is None:
+            filter_ = Filter()
+
+        # construct club list
+        if "clubs" in filter_:
+            clubs = []
+            for club in filter_["clubs"]:
+                fetched_club = self.db.get_club_by_id(club)
+                clubs.append((fetched_club["id"], fetched_club["abbreviation"]))
+        else:
+            bag = self.db.get_bag()
+            clubs = [(club["id"], club["abbreviation"]) for club in bag]
+
+        assert len(clubs) > 0, "Must graph at least one club"
+
+        # get shots
+        shots = self.db.get_shots(filter_)
+
+        # divide our data into clubs
+        if "clubs" in filter_:
+            data = {i: [] for i in filter_["clubs"]}
+        else:
+            bag = self.db.get_bag()
+            data = {i["id"]: [] for i in bag}
+
+        for shot in shots:
+            data[shot["club_id"]].append(shot["distance"])
+
+        # construct figure
+        fig, axes = plt.subplots(
+            1, len(clubs), figsize=(len(clubs), 8), squeeze=False, sharey=True
+        )  # one ax for each plot, 1 inch each ax
+
+        axes = axes.flat
+        colors = [color for color in self.colors]
+
+        long_swing = 0
+
+        for ax, club in zip(axes, clubs):
+            id_, name = club
+
+            ax.set_title(name)
+            curr_data = data[id_]
+            frequencies = Counter(curr_data)
+
+            xs, ys = [], []
+            # TODO - adjusting bin size
+            max_width = 0
+            for distance, count in frequencies.items():
+                edge = count - 1
+                max_width = max(max_width, edge)
+                long_swing = max(long_swing, distance)
+                x_range = range(-edge, edge + 1, 2)
+                xs.extend(list(x_range))
+                ys.extend([distance] * count)
+
+            buffer = 1  # TODO - dial this in please
+            ax.set_xlim(-max_width - buffer, max_width + buffer)
+
+            # strip the x-axis
+            ax.set_xticks([])
+
+            # make start at zero
+            upper_limit = (long_swing // 25 * 25) + 25  # nearest 25 after longest swing
+            ax.set_ylim(0, upper_limit)
+
+            # set y axis ticks
+            ax.set_yticks(range(0, upper_limit + 1, 50))
+            ax.set_yticks(range(0, upper_limit + 1, 10), minor=True)
+
+            ax.tick_params(which="both", right=True)
+
+            ax.scatter(xs, ys, color=colors.pop())
+
+        axes[-1].tick_params(right=True, labelright=True)
+
+        return fig
+
 
 bg = BagGrapher()
 
-bg.plot_all_points()
+bg.plot_clubs_discrete()
+plt.show()
