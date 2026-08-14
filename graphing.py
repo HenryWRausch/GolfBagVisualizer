@@ -1,6 +1,7 @@
 from collections import Counter
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from database import BagDatabase, Filter
 
@@ -83,7 +84,7 @@ class BagGrapher:
 
         fig.tight_layout()
 
-    def plot_clubs_discrete(self, filter_: Filter | None = None):
+    def plot_clubs_discrete(self):
 
         filter_ = self.filter_
 
@@ -162,8 +163,72 @@ class BagGrapher:
 
         return fig
 
+    def plot_clubs_continuous(self):
+        filter_ = self.filter_
+
+        # construct club list
+        if "clubs" in filter_:
+            clubs = []
+            for club in filter_["clubs"]:
+                fetched_club = self.db.get_club_by_id(club)
+                clubs.append((fetched_club["id"], fetched_club["abbreviation"]))
+        else:
+            bag = self.db.get_bag()
+            clubs = [(club["id"], club["abbreviation"]) for club in bag]
+
+        assert len(clubs) > 0, "Must graph at least one club"
+
+        # get shots
+        shots = self.db.get_shots(filter_)
+
+        # divide our data into clubs
+        if "clubs" in filter_:
+            data = {i: [] for i in filter_["clubs"]}
+        else:
+            bag = self.db.get_bag()
+            data = {i["id"]: [] for i in bag}
+
+        for shot in shots:
+            data[shot["club_id"]].append(shot["distance"])
+
+        # construct figure
+        fig, axes = plt.subplots(
+            1, len(clubs), figsize=(len(clubs), 8), squeeze=False, sharey=True
+        )  # one ax for each plot, 1 inch each ax
+
+        axes = axes.flat
+        colors = [color for color in self.colors]
+
+        long_swing = 0
+
+        for ax, club in zip(axes, clubs):
+            id_, name = club
+
+            ax.set_title(name)
+            curr_data = data[id_]
+            long_swing = max(long_swing, max(curr_data))
+            sns.violinplot(y=curr_data, color=colors.pop(), inner="quartile", ax=ax)
+
+            # strip the x-axis
+            ax.set_xticks([])
+
+            # make start at zero
+            upper_limit = (long_swing // 25 * 25) + 50  # nearest 50 after longest swing
+            ax.set_ylim(0, upper_limit)
+
+            # set y axis ticks
+            ax.set_yticks(range(0, upper_limit + 1, 50))
+            ax.set_yticks(range(0, upper_limit + 1, 10), minor=True)
+
+            ax.tick_params(which="both", right=True)
+
+        axes[-1].tick_params(right=True, labelright=True)
+
+        return fig
+
 
 bg = BagGrapher()
 
+bg.plot_clubs_continuous()
 bg.plot_clubs_discrete()
 plt.show()
