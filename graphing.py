@@ -13,7 +13,7 @@ class BagGrapher:
     # contains methods for generating graphs
     # as well as some QoL stuff for getting information
 
-    def __init__(self, name: str = "Demo"):
+    def __init__(self, name: str = "Demo", filter_: Filter | None = None):
 
         # create our basics
         self.db = BagDatabase(name)
@@ -39,14 +39,15 @@ class BagGrapher:
             "slategray",
         ]
 
-    def plot_all_points(self, filter_: Filter | None = None):
+        self.filter_ = Filter() if filter_ is None else filter_
+
+    def plot_all_points(self):
         # makes a figure that contains all filtered points as colored dots on line
         # color dictated by club, but TODO to allow it by date or course
         # supports at most 15 clubs. TODO to make it infinite
         # TODO - maybe think about a funny hole layout at some distance
 
-        if filter_ is None:
-            filter_ = Filter()
+        filter_ = self.filter_
 
         # get our data
         shots = self.db.get_shots(filter_)
@@ -84,8 +85,7 @@ class BagGrapher:
 
     def plot_clubs_discrete(self, filter_: Filter | None = None):
 
-        if filter_ is None:
-            filter_ = Filter()
+        filter_ = self.filter_
 
         # construct club list
         if "clubs" in filter_:
