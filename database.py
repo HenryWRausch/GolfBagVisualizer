@@ -1,3 +1,4 @@
+import csv
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -142,6 +143,20 @@ class BagDatabase:
         self.conn.execute(q, (date_, club_id, distance, course_id))
 
         self.conn.commit()
+
+    def load_shots_simple_csv(self, file_path: str | Path):
+        # expects headers: date, club_id, distance, optionally course_id
+        with open(file_path, mode="r", newline="", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                course = row.get("course_id")
+                if course:  # any input given
+                    course = int(course)
+                else:  # not included, pass None
+                    course = None
+                self.insert_shot(
+                    row["date"], int(row["club_id"]), int(row["distance"]), course
+                )
 
 
 if __name__ == "__main__":
