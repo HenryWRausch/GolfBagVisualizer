@@ -1,7 +1,10 @@
+import io
 from collections import Counter
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+from PIL import Image
 
 from database import BagDatabase, Filter
 
@@ -90,6 +93,8 @@ class BagGrapher:
 
         ax.legend(legend_labels, loc="center left", bbox_to_anchor=(1.02, 0.5))
 
+        ax.set_title("Summary")
+
         # strip the x-axis
         ax.set_xticks([])
 
@@ -97,6 +102,8 @@ class BagGrapher:
         ax.set_ylim(bottom=0)
 
         fig.tight_layout()
+
+        return fig
 
     def plot_clubs_discrete(self):
 
@@ -228,7 +235,7 @@ class BagGrapher:
             ax.set_xticks([])
 
             # make start at zero
-            upper_limit = (long_swing // 25 * 25) + 50  # nearest 50 after longest swing
+            upper_limit = (long_swing // 25 * 25) + 25  # nearest 25 after longest swing
             ax.set_ylim(0, upper_limit)
 
             # set y axis ticks
@@ -283,7 +290,47 @@ class BagGrapher:
 
         return averages
 
+    def make_summary_image(
+        self, method: str, destination: str | Path = "Report.png", show: bool = True
+    ):
+        if method == "discrete":
+            clubs_plot = self.plot_clubs_discrete()
+        elif method == "continuous":
+            clubs_plot = self.plot_clubs_continuous()
+        else:
+            raise ValueError('Method must be either "discrete" or "continuous"')
+
+        summary_plot = self.plot_all_points()
+
+        # save both to memory
+        summary_buf = io.BytesIO()
+        clubs_buf = io.BytesIO()
+
+        summary_plot.savefig(summary_buf, format="png", bbox_inches="tight")
+        clubs_plot.savefig(clubs_buf, format="png", bbox_inches="tight")
+
+        # load them into pil
+        summary_buf.seek(0)
+        clubs_buf.seek(0)
+        summary_img = Image.open(summary_buf)
+        clubs_img = Image.open(clubs_buf)
+
+        # merge them
+        total_width = summary_img.width + clubs_img.width
+        max_height = max(summary_img.height, clubs_img.height)
+
+        output = Image.new("RGB", (total_width, max_height), (255, 255, 255))
+
+        output.paste(summary_img, (0, 0))
+        output.paste(clubs_img, (summary_img.width, 0))  # offset by summary width
+
+        # save it
+        output.save(destination)
+
+        # show it if we want
+        if show:
+            output.show()
+
 
 bg = BagGrapher()
-bg.plot_all_points()
-plt.savefig("chart.png", bbox_inches="tight", dpi=150)
+bg.make_summary_image("continuous")
