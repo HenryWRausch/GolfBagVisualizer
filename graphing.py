@@ -1,5 +1,7 @@
+import argparse
 import io
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -50,6 +52,9 @@ class BagGrapher:
         # color dictated by club, but TODO to allow it by date or course
         # supports at most 15 clubs. TODO to make it infinite
         # TODO - maybe think about a funny hole layout at some distance
+
+        # TODO - include sample size below legend
+        # TODO - include continuous band next to discrete
 
         filter_ = self.filter_
 
@@ -103,8 +108,6 @@ class BagGrapher:
 
         # make start at zero
         ax.set_ylim(bottom=0)
-
-        fig.tight_layout()
 
         return fig
 
@@ -328,12 +331,152 @@ class BagGrapher:
         output.paste(clubs_img, (summary_img.width, 0))  # offset by summary width
 
         # save it
-        output.save(destination)
+        if destination:
+            output.save(destination)
 
         # show it if we want
         if show:
             output.show()
 
 
-bg = BagGrapher("Henry")
-bg.make_summary_image("continuous")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="Report Generator",
+        description="Builds a report based on a given player database",
+    )
+
+    parser.add_argument(
+        "player_name",
+        nargs="?",
+        default="Demo",
+        help="Player file to use for generating report. Defaults to Demo",
+    )
+    parser.add_argument(
+        "-d",
+        "--discrete",
+        action="store_true",
+        help="Uses discrete plot instead of continuous",
+    )
+    parser.add_argument(
+        "--hide",
+        action="store_false",
+        help="Hides popup with report on complete generation",
+    )
+    parser.add_argument(
+        "-n", "--no-save", action="store_true", help="Stops report from being saved"
+    )
+    parser.add_argument(
+        "-s", "--save", default="Report.png", help="Location to save the report"
+    )
+    parser.add_argument(
+        "--start-date", help="Start date for report filter (YYYY-MM-DD)"
+    )
+    parser.add_argument("--end-date", help="End date for report filter (YYYY-MM-DD)")
+
+    parser.add_argument(
+        "--low-loft", type=float, help="Lowest loft if filtering by loft"
+    )
+    parser.add_argument(
+        "--high-loft", type=float, help="Highest loft if filtering by loft"
+    )
+
+    parser.add_argument(
+        "--club-str", nargs="*", help="Club terms to filter for if desired"
+    )
+
+    parser.add_argument(
+        "--courses", nargs="*", default=[], help="Course terms to filter for if desired"
+    )
+
+    args = parser.parse_args()
+
+    # Filter construction
+    db = BagDatabase(args.player_name)
+
+    # dates
+    if args.start_date and not args.end_date:
+        start = args.start_date
+        end = "9999-12-31"  # end of time
+
+    elif args.end_date and not args.start_date:
+        start = "0001-01-01"  # start of time
+        end = args.end_date
+
+    else:
+        start, end = args.start_date, args.end_date
+
+    if start and end:
+        date_filter = (date.fromisoformat(start), date.fromisoformat(end))
+    else:
+        date_filter = None
+
+    # courses
+    course_ids = set()
+
+    for search_term in args.courses:
+        matching = db.get_course_id_by_text(search_term)
+        for m in matching:
+            course_ids.add(m)
+
+    course_ids = list(course_ids) if len(course_ids) > 0 else None
+
+    # clubs
+
+    # get accepted lofts
+    if args.low_loft is not None or args.high_loft:
+        if args.low_loft is not None and not args.high_loft:
+            low = args.low_loft
+            high = 91
+
+        elif args.high_loft and args.low_loft is None:
+            low = 0
+            high = args.high_loft
+
+        else:
+            low, high = args.low_loft, args.high_loft
+
+        assert low is not None and high
+
+        loft_accepted = set(db.get_club_id_by_loft_range(low, high))
+
+    else:
+        loft_accepted = None
+
+    # get accepted club texts
+    if args.club_str:
+        text_accepted = set()
+        for term in args.club_str:
+            for id_ in db.get_club_id_by_text(term):
+                text_accepted.add(id_)
+    else:
+        text_accepted = None
+
+    # intersect
+
+    if loft_accepted is not None and text_accepted is not None:
+        club_ids = list(text_accepted.intersection(loft_accepted))
+    elif loft_accepted is not None:
+        club_ids = list(loft_accepted)
+    elif text_accepted is not None:
+        club_ids = list(text_accepted)
+    else:
+        club_ids = None
+
+    filter_ = Filter()
+
+    if club_ids is not None:
+        filter_["clubs"] = club_ids
+    if date_filter is not None:
+        filter_["date_range"] = date_filter
+    if course_ids is not None:
+        filter_["course_ids"] = course_ids
+
+    if args.no_save:
+        destination = ""
+    else:
+        destination = args.save
+
+    bg = BagGrapher(args.player_name, filter_)
+    bg.make_summary_image(
+        "discrete" if args.discrete else "continuous", destination, args.hide
+    )
