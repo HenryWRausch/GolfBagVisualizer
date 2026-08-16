@@ -64,17 +64,26 @@ class BagGrapher:
             data[shot["club_id"]].append(shot["distance"])
 
         # set up our figure
-        fig = plt.figure(figsize=(1, 8))
+        fig = plt.figure(figsize=(0.3, 8))
         ax = fig.add_subplot(111)
 
         # TODO - put some thought into the order here (reverse)
         colors = [color for color in self.colors]
 
+        legend_labels = []
+
         for club in data:
             assert colors, "Graphing currently only supports 15 clubs"
-            # LABELLING TO BE HANDLED ELSEWHERE
+
             color = colors.pop()
+            legend_labels.append(club)
             ax.scatter([0] * len(data[club]), data[club], color=color)
+
+        # convert club id to club abbreviation
+        for idx, club_id in enumerate(legend_labels):
+            legend_labels[idx] = self.db.get_club_by_id(club_id)["abbreviation"]
+
+        ax.legend(legend_labels, loc="center left", bbox_to_anchor=(1.02, 0.5))
 
         # strip the x-axis
         ax.set_xticks([])
@@ -271,3 +280,5 @@ class BagGrapher:
 
 
 bg = BagGrapher()
+bg.plot_all_points()
+plt.savefig("chart.png", bbox_inches="tight", dpi=150)
