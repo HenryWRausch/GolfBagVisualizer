@@ -79,9 +79,14 @@ class BagGrapher:
             legend_labels.append(club)
             ax.scatter([0] * len(data[club]), data[club], color=color)
 
+            # include averages in legend
+        averages = self.averages_within_bound()
+
         # convert club id to club abbreviation
         for idx, club_id in enumerate(legend_labels):
-            legend_labels[idx] = self.db.get_club_by_id(club_id)["abbreviation"]
+            legend_labels[idx] = (
+                f"{self.db.get_club_by_id(club_id)['abbreviation']}: {round(averages[club_id])}"
+            )
 
         ax.legend(legend_labels, loc="center left", bbox_to_anchor=(1.02, 0.5))
 
