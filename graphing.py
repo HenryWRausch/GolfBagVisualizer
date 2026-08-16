@@ -87,8 +87,11 @@ class BagGrapher:
 
         # convert club id to club abbreviation
         for idx, club_id in enumerate(legend_labels):
+            average = averages.get(club_id, "No Data")
+            if isinstance(average, float):
+                average = round(average, 1)
             legend_labels[idx] = (
-                f"{self.db.get_club_by_id(club_id)['abbreviation']}: {round(averages[club_id])}"
+                f"{self.db.get_club_by_id(club_id)['abbreviation']}: {average}"
             )
 
         ax.legend(legend_labels, loc="center left", bbox_to_anchor=(1.02, 0.5))
@@ -332,5 +335,5 @@ class BagGrapher:
             output.show()
 
 
-bg = BagGrapher()
+bg = BagGrapher("Henry")
 bg.make_summary_image("continuous")
