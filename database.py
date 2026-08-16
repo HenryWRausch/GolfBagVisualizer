@@ -130,6 +130,19 @@ class BagDatabase:
 
         return dict(c.fetchone())
 
+    def insert_shot(
+        self,
+        date_: str | date,
+        club_id: int,
+        distance: int,
+        course_id: int | None = None,
+    ):
+        q = "INSERT INTO shots (date, club_id, distance, course_id) VALUES (?, ?, ?, ?)"
+
+        self.conn.execute(q, (date_, club_id, distance, course_id))
+
+        self.conn.commit()
+
 
 if __name__ == "__main__":
     load_dotenv()
