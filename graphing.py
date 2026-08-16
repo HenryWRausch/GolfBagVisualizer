@@ -206,7 +206,8 @@ class BagGrapher:
 
             ax.set_title(name)
             curr_data = data[id_]
-            long_swing = max(long_swing, max(curr_data))
+            if curr_data:
+                long_swing = max(long_swing, max(curr_data))
             sns.violinplot(y=curr_data, color=colors.pop(), inner="quartile", ax=ax)
 
             # strip the x-axis
@@ -226,9 +227,47 @@ class BagGrapher:
 
         return fig
 
+    def averages_within_bound(self):
+        shots = self.db.get_shots(self.filter_)
+
+        # construct club list
+        if "clubs" in self.filter_:
+            clubs = []
+            for club in self.filter_["clubs"]:
+                fetched_club = self.db.get_club_by_id(club)
+                clubs.append((fetched_club["id"], fetched_club["abbreviation"]))
+        else:
+            bag = self.db.get_bag()
+            clubs = [(club["id"], club["abbreviation"]) for club in bag]
+
+        assert len(clubs) > 0, "Must have at least one club"
+
+        # divide our data into clubs
+        if "clubs" in self.filter_:
+            data = {i: [] for i in self.filter_["clubs"]}
+        else:
+            bag = self.db.get_bag()
+            data = {i["id"]: [] for i in bag}
+
+        for shot in shots:
+            data[shot["club_id"]].append(shot["distance"])
+
+        averages = {}
+
+        for club, shots in data.items():
+            shots.sort()
+
+            # 10th and 90th percentile
+            # TODO - make this smarter
+            lower_index = int(len(shots) * 0.1)
+            upper_index = int(len(shots) * 0.9)
+
+            shots = shots[lower_index : upper_index + 1]
+
+            if len(shots) > 0:
+                averages[club] = sum(shots) / len(shots)
+
+        return averages
+
 
 bg = BagGrapher()
-
-bg.plot_clubs_continuous()
-bg.plot_clubs_discrete()
-plt.show()
