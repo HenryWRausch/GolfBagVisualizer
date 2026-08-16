@@ -158,6 +158,23 @@ class BagDatabase:
                     row["date"], int(row["club_id"]), int(row["distance"]), course
                 )
 
+    def get_club_id_by_loft_range(self, low: float, high: float) -> list[int]:
+        q = """select id as id
+                from bag
+                where loft between ? and ?"""
+        cur = self.conn.execute(q, (low, high))
+        return [row["id"] for row in cur.fetchall()]
+
+    def get_club_id_by_text(self, search_term: str) -> list[int]:
+        q = """select id as id
+                from bag
+                where lower(abbreviation) like lower(?)
+                    or lower(name) like lower(?)
+                    or lower(brand) like lower(?)"""
+        str_input = f"%{search_term}%"
+        cur = self.conn.execute(q, (str_input, str_input, str_input))
+        return [row["id"] for row in cur.fetchall()]
+
 
 if __name__ == "__main__":
     load_dotenv()
