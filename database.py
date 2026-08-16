@@ -175,6 +175,14 @@ class BagDatabase:
         cur = self.conn.execute(q, (str_input, str_input, str_input))
         return [row["id"] for row in cur.fetchall()]
 
+    def get_course_id_by_text(self, search_term: str) -> list[int]:
+        q = """select id as id
+                    from courses
+                    where lower(name) like lower(?)"""
+        str_input = f"%{search_term}%"
+        cur = self.conn.execute(q, (str_input,))
+        return [row["id"] for row in cur.fetchall()]
+
 
 if __name__ == "__main__":
     load_dotenv()
