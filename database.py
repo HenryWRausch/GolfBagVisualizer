@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 class Filter(TypedDict, total=False):
     # holds the details that we want to include in a given plot
     # TODO - figure out whether we want to allow specific dates
-    course_ids: list[int]
+    course_ids: list[int]  # list of ids
     date_range: tuple[date, date]  # start, end
-    clubs: list[int]
+    clubs: list[int]  # list of ids
 
 
 class BagDatabase:
